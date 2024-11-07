@@ -176,6 +176,7 @@ def find_open_rooms(courses_by_location, building, day, start_time, end_time):
         if room_free:
             open_rooms.append(room)
 
+    open_rooms = sorted(open_rooms)
     return open_rooms
 
 @app.route('/')
@@ -200,7 +201,6 @@ def find_open_rooms_api():
     return jsonify({"open_rooms": open_rooms})
 
 def scrape_and_save_data():
-    # Combine scraping and saving into one function
     subject_links = get_subject_links()
     all_courses_by_location = defaultdict(lambda: defaultdict(list))
 
