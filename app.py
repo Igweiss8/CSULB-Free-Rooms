@@ -1,8 +1,11 @@
+from flask import Flask, request, jsonify, render_template
 import requests
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from datetime import datetime
 import re
+
+app = Flask(__name__)
 
 # Define the base URL of the schedule page
 base_url = "https://web.csulb.edu/depts/enrollment/registration/class_schedule/Fall_2024/By_Subject/"  # Replace with the actual URL
@@ -175,36 +178,40 @@ def find_open_rooms(courses_by_location, building, day, start_time, end_time):
 
     return open_rooms
 
+@app.route('/')
+def landing():
+    return render_template("index.html")
+    
+@app.route("/find_open_rooms", methods=["POST"])
+def find_open_rooms_api():
+    data = request.json
+    building = data["building"]
+    day = data["day"]
+    start_time = data["start_time"]
+    end_time = data["end_time"]
 
-def main():
-    # Load data from the file if it exists
+    # Load class data
     try:
         all_courses_by_location = load_from_file()
-        print("Loaded data from file.")
     except FileNotFoundError:
-        # If file doesn't exist, scrape data and save it
-        print("File not found. Scraping data...")
-        subject_links = get_subject_links()
-        all_courses_by_location = defaultdict(lambda: defaultdict(list))
+        all_courses_by_location = scrape_and_save_data()
 
-        for subject_name, subject_url in subject_links.items():
-            print(f"Scraping {subject_name} classes...")
-            courses_by_location = get_class_data(subject_url)
-            for location, days_data in courses_by_location.items():
-                for day, times in days_data.items():
-                    all_courses_by_location[location][day].extend(times)
-        
-        save_to_file(all_courses_by_location)
-        print("Data has been saved to 'class_schedule.txt'")
-
-    # Example usage of open room finder
-    building = "ECS"  # Example building prefix
-    day = "Tu"       # Example day
-    start_time = "11:00AM" # Start time of desired open slot
-    end_time = "11:30AM"   # End time of desired open slot
     open_rooms = find_open_rooms(all_courses_by_location, building, day, start_time, end_time)
+    return jsonify({"open_rooms": open_rooms})
+
+def scrape_and_save_data():
+    # Combine scraping and saving into one function
+    subject_links = get_subject_links()
+    all_courses_by_location = defaultdict(lambda: defaultdict(list))
+
+    for subject_name, subject_url in subject_links.items():
+        courses_by_location = get_class_data(subject_url)
+        for location, days_data in courses_by_location.items():
+            for day, times in days_data.items():
+                all_courses_by_location[location][day].extend(times)
     
-    print(f"Open rooms in {building} from {start_time} to {end_time} on {day}: {open_rooms}")
+    save_to_file(all_courses_by_location)
+    return all_courses_by_location
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
