@@ -4,8 +4,11 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from datetime import datetime
 import re
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 # Define the base URL of the schedule page
 base_url = "https://web.csulb.edu/depts/enrollment/registration/class_schedule/Fall_2024/By_Subject/"  # Replace with the actual URL
@@ -214,4 +217,4 @@ def scrape_and_save_data():
     return all_courses_by_location
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000,  allow_unsafe_werkzeug=True)
