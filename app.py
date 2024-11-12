@@ -11,7 +11,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 
 # Define the base URL of the schedule page
-base_url = "https://web.csulb.edu/depts/enrollment/registration/class_schedule/Fall_2024/By_Subject/"  # Replace with the actual URL
+base_url = "https://web.csulb.edu/depts/enrollment/registration/class_schedule/Fall_2024/By_Subject/" 
 
 def get_subject_links():
     """Fetch the main page and extract subject links."""
