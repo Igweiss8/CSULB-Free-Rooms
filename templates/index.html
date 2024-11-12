@@ -3,28 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room Finder</title>
+    <title>CSULB Room Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Find Open Rooms</h1>
-    <form id="room-form">
-        <label for="building">Building:</label>
-        <input type="text" id="building" name="building" required><br><br>
+    <div class="header">
+        <h1>CSULB Room Finder</h1>
+        <p class="subtitle">Find available classrooms on campus</p>
+    </div>
 
-        <label for="day">Day (e.g., "Tu" for Tuesday):</label>
-        <input type="text" id="day" name="day" required><br><br>
+    <div class="container">
+        <div class="form-container">
+            <form id="room-form">
+                <div class="form-group">
+                    <label for="building">Building Code:</label>
+                    <input type="text" id="building" name="building" placeholder="e.g. ECS" required>
+                </div>
 
-        <label for="start-time">Start Time (e.g., "11:00AM"):</label>
-        <input type="text" id="start-time" name="start-time" required><br><br>
+                <div class="form-group">
+                    <label for="day">Day:</label>
+                    <select id="day" name="day" required>
+                        <option value="">Select a day</option>
+                        <option value="M">Monday (M)</option>
+                        <option value="Tu">Tuesday (Tu)</option>
+                        <option value="W">Wednesday (W)</option>
+                        <option value="Th">Thursday (Th)</option>
+                        <option value="F">Friday (F)</option>
+                    </select>
+                </div>
 
-        <label for="end-time">End Time (e.g., "11:30AM"):</label>
-        <input type="text" id="end-time" name="end-time" required><br><br>
+                <div class="form-group">
+                    <label for="start-time">Start Time:</label>
+                    <input type="text" id="start-time" name="start-time" placeholder="e.g. 11:00AM" required>
+                </div>
 
-        <button type="button" onclick="findOpenRooms()">Find Open Rooms</button>
-    </form>
+                <div class="form-group">
+                    <label for="end-time">End Time:</label>
+                    <input type="text" id="end-time" name="end-time" placeholder="e.g. 11:30AM" required>
+                </div>
 
-    <h2>Results:</h2>
-    <ul id="results"></ul>
+                <button type="button" onclick="findOpenRooms()" class="search-btn">Find Open Rooms</button>
+            </form>
+        </div>
+
+        <div class="results-container">
+            <h2>Available Rooms</h2>
+            <div id="loading" class="loading" style="display: none;">Searching...</div>
+            <div id="results-wrapper">
+                <ul id="results" class="results-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>California State University, Long Beach - Room Finder Tool</p>
+    </footer>
 
     <script>
         async function findOpenRooms() {
@@ -33,21 +66,32 @@
             const startTime = document.getElementById("start-time").value;
             const endTime = document.getElementById("end-time").value;
 
-            const response = await fetch("http://127.0.0.1:5000/find_open_rooms", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    building: building,
-                    day: day,
-                    start_time: startTime,
-                    end_time: endTime
-                })
-            });
+            // Show loading indicator
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("results").innerHTML = "";
 
-            const data = await response.json();
-            displayResults(data.open_rooms);
+            try {
+                const response = await fetch("/find_open_rooms", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        building: building,
+                        day: day,
+                        start_time: startTime,
+                        end_time: endTime
+                    })
+                });
+
+                const data = await response.json();
+                displayResults(data.open_rooms);
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById("results").innerHTML = "<li class='error'>An error occurred while searching for rooms.</li>";
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
         }
 
         function displayResults(openRooms) {
@@ -55,10 +99,11 @@
             resultsList.innerHTML = "";
 
             if (openRooms.length === 0) {
-                resultsList.innerHTML = "<li>No open rooms found.</li>";
+                resultsList.innerHTML = "<li class='no-results'>No open rooms found.</li>";
             } else {
                 openRooms.forEach(room => {
                     const listItem = document.createElement("li");
+                    listItem.className = "room-item";
                     listItem.textContent = room;
                     resultsList.appendChild(listItem);
                 });
