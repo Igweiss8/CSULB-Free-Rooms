@@ -106,14 +106,19 @@ def is_valid_time_format(time_str):
     return bool(match)
 
 def parse_time(time_str):
-    """Parse time string, handling both '%I:%M%p' and '%I%p' formats."""
-    if ':' in time_str:
-        return datetime.strptime(time_str, "%I:%M%p")  # Format like '10:00AM'
-    else:
-        return datetime.strptime(time_str, "%I%p")  # Format like '10AM'
+    """Parse time string to datetime, converting to 24-hour format."""
+    try:
+        if ':' in time_str:
+            time = datetime.strptime(time_str, "%I:%M%p")  # Format like '10:00AM'
+        else:
+            time = datetime.strptime(time_str, "%I%p")  # Format like '10AM'
+        return time.time()  # Return just the time part
+    except ValueError as e:
+        print(f"Error parsing time {time_str}: {e}")
+        return None
 
 def normalize_time(time_str):
-    """Normalize a time string to ensure '%I:%M%p' format."""
+    """Normalize a time string to ensure '%I:%M%p' format and return as 24hr time."""
     # Split start and end time by '-'
     parts = time_str.split("-")
     start_str, end_str = parts[0], parts[1]
@@ -130,7 +135,7 @@ def normalize_time(time_str):
     if "AM" not in end_str and "PM" not in end_str:
         # Determine if end time should be PM based on comparison
         start_time = datetime.strptime(start_str, "%I:%M%p")
-        end_time = datetime.strptime(end_str, "%I:%M%p")
+        end_time = datetime.strptime(end_str + "AM", "%I:%M%p")
         
         # If start time is later than end time, the end time is in PM
         if start_time >= end_time:
@@ -142,8 +147,9 @@ def normalize_time(time_str):
 
 def day_matches(input_day, schedule_day):
     """Check if input day is part of the scheduled days string."""
-    # Return True if the input day (like "Tu") is in schedule_day (like "TuThu")
-    return input_day in schedule_day
+    # For single day input (like "W"), match both "W" and "MW" or any combo containing "W"
+    return (input_day == schedule_day or  # Exact match
+            (len(input_day) == 1 and input_day in schedule_day))  # Part of a combination
 
 def find_open_rooms(courses_by_location, building, day, start_time, end_time):
     """Find open rooms in a specified building prefix within a time range on a specified day."""
@@ -151,10 +157,13 @@ def find_open_rooms(courses_by_location, building, day, start_time, end_time):
     input_start = parse_time(start_time)
     input_end = parse_time(end_time)
 
+    if not input_start or not input_end:
+        return []  # Return empty list if time parsing fails
+
     # Iterate over all rooms (locations) in the data
     for room, days_data in courses_by_location.items():
         # Check if the room's prefix matches the specified building
-        build , num = room.split("-")
+        build, num = room.split("-")
         if build != building:
             continue  # Skip rooms that do not belong to the specified building prefix
 
@@ -169,8 +178,11 @@ def find_open_rooms(courses_by_location, building, day, start_time, end_time):
                     class_start = parse_time(class_start_str)
                     class_end = parse_time(class_end_str)
 
-                    # Check for overlap with the specified time range
-                    if not (input_end <= class_start or input_start >= class_end):
+                    if not class_start or not class_end:
+                        continue  # Skip invalid times
+
+                    # Check for overlap using 24-hour time comparison
+                    if (input_start < class_end and input_end > class_start):
                         room_free = False
                         break  # Stop checking times if overlap is found
                 if not room_free:
